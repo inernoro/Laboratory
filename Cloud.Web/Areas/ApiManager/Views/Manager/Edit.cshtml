@@ -1,0 +1,156 @@
+﻿
+@{
+    ViewBag.Title = "Edit";
+}
+<div class="row" id="edit">
+    <h4 class="text-center">
+        {{namespace.actionDisplay}} ({{namespace.actionName}})
+    </h4>
+    <form role="form">
+        <div v-for="node in namespace.inputParantrens" class="form-group">
+            <label :for="node.name">
+                {{node.description}} ({{node.name}})
+            </label>
+            <input v-bind:type="node.type | toType node.description" class="form-control data-bind" :id="node.name" :placeholder="node.type" />
+        </div>
+
+        <a :href="'/apimanager/test/list?id='+namespace.callUrl" class="btn btn-default">
+            历史
+        </a><button type="button" @@click="submit()" class="btn btn-default">
+            提交
+        </button>
+    </form>
+    <br />
+    <div v-if="state==200" class="row">
+        <textarea id="console" rows="8" v-model="result" class="form-control" readonly="readonly"></textarea>
+    </div>
+</div>
+
+<script type="text/javascript" language="javascript">
+    function GetRequest() {
+        var url = location.search; //获取url中"?"符后的字串
+        var theRequest = new Object();
+        if (url.indexOf("?") !== -1) {
+            var str = url.substr(1);
+            var strs = str.split("&");
+            for (var i = 0; i < strs.length; i++) {
+                theRequest[strs[i].split("=")[0]] = (strs[i].split("=")[1]);
+            }
+        }
+        return theRequest;
+    }
+
+    $(function () {
+        $.ajax({
+            url: "/api/services/app/Manager/GetInfo",
+            data: { input: GetRequest()["url"] },
+            type: "Get",
+            dataType: "json",
+            success: function (data) {
+                model.namespace = data.result;
+            },
+            error: function (e, r) {
+                console.log(e, r);
+            }
+        });
+    });
+
+    var model = {
+        namespace: new Array(),
+        state: 0,
+        result: "",
+        take: 0
+    }
+    var first = true;
+    var vue = new Vue({
+        el: "#parent",
+        data: model,
+        filters: {
+            toType: function (value, display) {
+                if (!!display) {
+                    console.log(1);
+                    if (display.indexOf("type:") !== -1) {
+                        var field = "type:";
+                        var left = display.substring(display.indexOf(field) + field.length);
+                        var type = left.substring(0, left.indexOf(")"));
+                        console.log(2);
+                        switch (type) {
+                            case "string":
+                                return "text";
+                            case "phone":
+                                return "tel";
+                            case "datetime":
+                                return "datetime-local";
+                            case "date":
+                                return "date";
+                            case "time":
+                                return "time";
+                            case "long":
+                            case "int":
+                            case "double":
+                            case "flolt":
+                                return "number";
+                            case "bool":
+                                return "checkbox";
+                            default:
+                        }
+                    }
+                }
+                switch (value) {
+                    case "Int32":
+                    case "Int32(NULL)":
+                        return "number";
+                    case "String":
+                        return "text";
+                    case "Boolean":
+                    case "Boolean(NULL)":
+                        return "checkbox";
+                    case "DateTime(NULL)":
+                    case "DateTime":
+                        return "datetime-local";
+                    default:
+                        return "text";
+
+                }
+
+            }
+        }, methods: {
+            submit: dyTest
+        }
+    });
+    function dyTest() {
+        this.take = 0;
+        this.state = 0;
+        var ele = {};
+        $.each($(".data-bind"), function (i, e) {
+            ele[$(e).attr("id")] = $(e).val();
+        });
+        console.log(JSON.stringify({
+            data: JSON.stringify(ele),
+            url: model.namespace.callUrl,
+            type: model.namespace.reponse
+        }));
+        $.ajax({
+            url: "/api/services/app/manager/Test",
+            data: JSON.stringify({
+                data: JSON.stringify(ele),
+                url: model.namespace.callUrl,
+                type: model.namespace.reponse
+            }),
+            type: "post",
+            dataType: "json",
+            contentType: "application/json",
+            success: function (data) {
+                console.log(data);
+                if (data.success === true) {
+                    model.state = 200;
+                    model.take = data.result.take;
+                    model.result = JSON.stringify(JSON.parse(data.result.result), undefined, 4);
+                }
+            },
+            error: function () {
+            }
+        });
+    }
+
+</script>
